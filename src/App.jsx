@@ -1,121 +1,72 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [session, setSession] = useState(null)
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSession(session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    await supabase.auth.signInWithOtp({ email })
+    setSent(true)
+  }
+
+  if (loading) return (
+    <div style={{background:'#0d0f14',height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',color:'#4dffc3',fontFamily:'sans-serif'}}>
+      Cargando...
+    </div>
+  )
+
+  if (!session) return (
+    <div style={{background:'#0d0f14',height:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{background:'#13161e',border:'1px solid rgba(255,255,255,0.06)',borderRadius:20,padding:32,width:320,fontFamily:'sans-serif',color:'#eef0f5'}}>
+        <div style={{fontSize:22,fontWeight:800,color:'#4dffc3',marginBottom:4}}>FinFlow</div>
+        <div style={{fontSize:12,color:'#5a5f74',marginBottom:24}}>Control Financiero Personal</div>
+        {!sent ? (
+          <form onSubmit={handleLogin}>
+            <input
+              type="email"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              style={{width:'100%',background:'#1a1e29',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 14px',color:'#eef0f5',fontSize:14,marginBottom:12,boxSizing:'border-box',outline:'none'}}
+            />
+            <button type="submit"
+              style={{width:'100%',background:'#4dffc3',border:'none',borderRadius:10,padding:12,color:'#0d0f14',fontWeight:700,fontSize:14,cursor:'pointer'}}>
+              Entrar con Magic Link
+            </button>
+          </form>
+        ) : (
+          <div style={{textAlign:'center',color:'#8a90a8',fontSize:14}}>
+            ✉️ Revisa tu correo — te enviamos el link de acceso
+          </div>
+        )}
+      </div>
+    </div>
+  )
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <div style={{background:'#0d0f14',height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',color:'#eef0f5',fontFamily:'sans-serif',flexDirection:'column',gap:12}}>
+      <div style={{fontSize:22,fontWeight:800,color:'#4dffc3'}}>FinFlow ✓</div>
+      <div style={{fontSize:14,color:'#8a90a8'}}>Sesión activa: {session.user.email}</div>
+      <button onClick={() => supabase.auth.signOut()}
+        style={{marginTop:8,background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'8px 16px',color:'#8a90a8',cursor:'pointer',fontSize:13}}>
+        Cerrar sesión
+      </button>
+    </div>
   )
 }
-
-export default App
