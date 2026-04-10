@@ -2,12 +2,18 @@ import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { useVESRate } from './hooks/useVESRate'
 import { useAccounts } from './hooks/useAccounts'
+import { useExpenses } from './hooks/useExpenses'
+import { useReceivables } from './hooks/useReceivables'
+import { usePayables } from './hooks/usePayables'
+import { useOpportunities } from './hooks/useOpportunities'
+import Dashboard from './pages/Dashboard'
 import Cuentas from './pages/Cuentas'
 
 const styles = {
   wrapper: { display: 'flex', minHeight: '100vh', background: '#0d0f14', color: '#eef0f5', fontFamily: 'DM Sans, sans-serif' },
   sidebar: { width: 220, background: '#13161e', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', padding: '28px 0', position: 'fixed', left: 0, top: 0, bottom: 0 },
-  logoMark: { fontWeight: 800, fontSize: 22, color: '#4dffc3', letterSpacing: '-0.5px', padding: '0 24px 28px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
+  logoWrap: { padding: '0 24px 28px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
+  logoMark: { fontWeight: 800, fontSize: 22, color: '#4dffc3', letterSpacing: '-0.5px' },
   logoSub: { fontSize: 11, color: '#5a5f74', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 },
   nav: { padding: '20px 12px 0', flex: 1 },
   navItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', color: '#8a90a8', fontSize: 14, fontWeight: 500, marginBottom: 2, transition: 'all 0.15s' },
@@ -16,6 +22,7 @@ const styles = {
   topbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'sticky', top: 0, background: 'rgba(13,15,20,0.92)', backdropFilter: 'blur(12px)', zIndex: 50 },
   topbarTitle: { fontWeight: 700, fontSize: 20 },
   topbarDate: { fontSize: 12, color: '#8a90a8', marginTop: 1 },
+  topbarRight: { display: 'flex', alignItems: 'center', gap: 10 },
   tasaWidget: { display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 10, padding: '6px 12px', cursor: 'pointer' },
   tasaLabel: { fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#f97316', opacity: 0.7 },
   tasaValue: { fontWeight: 700, fontSize: 14, color: '#f97316' },
@@ -43,18 +50,24 @@ const navItems = [
   { id: 'historial', icon: '🕐', label: 'Historial' },
 ]
 
+const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
 export default function App() {
   const [session, setSession] = useState(null)
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState('cuentas')
+  const [page, setPage] = useState('dashboard')
   const [tasaModal, setTasaModal] = useState(false)
   const [tasaInput, setTasaInput] = useState('')
 
   const userId = session?.user?.id
   const { rate, updateRate } = useVESRate(userId)
   const { accounts, addAccount, updateAccount, deleteAccount } = useAccounts(userId)
+  const { expenses, addExpense, toggleExpense, deleteExpense } = useExpenses(userId)
+  const { receivables, addReceivable, toggleReceivable, deleteReceivable } = useReceivables(userId)
+  const { payables, addPayable, togglePayable, deletePayable } = usePayables(userId)
+  const { opportunities, addOpportunity, deleteOpportunity } = useOpportunities(userId)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -78,7 +91,9 @@ export default function App() {
     setTasaModal(false)
   }
 
-  const today = new Date().toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const now = new Date()
+  const today = now.toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const monthLabel = `${months[now.getMonth()]} ${now.getFullYear()}`
 
   if (loading) return (
     <div style={{ background: '#0d0f14', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4dffc3', fontFamily: 'sans-serif' }}>
@@ -106,18 +121,22 @@ export default function App() {
     </div>
   )
 
+  const sharedProps = { accounts, rate, expenses, receivables, payables, opportunities }
+
   return (
     <div style={styles.wrapper}>
 
       {/* SIDEBAR */}
       <aside style={styles.sidebar}>
-        <div style={styles.logoMark}>
-          FinFlow
+        <div style={styles.logoWrap}>
+          <div style={styles.logoMark}>FinFlow</div>
           <div style={styles.logoSub}>Control Financiero</div>
         </div>
         <nav style={styles.nav}>
           {navItems.map(item => (
-            <div key={item.id} style={{ ...styles.navItem, ...(page === item.id ? styles.navItemActive : {}) }} onClick={() => setPage(item.id)}>
+            <div key={item.id}
+              style={{ ...styles.navItem, ...(page === item.id ? styles.navItemActive : {}) }}
+              onClick={() => setPage(item.id)}>
               <span>{item.icon}</span> {item.label}
             </div>
           ))}
@@ -142,7 +161,7 @@ export default function App() {
             <div style={styles.topbarTitle}>{navItems.find(n => n.id === page)?.label}</div>
             <div style={styles.topbarDate}>{today.charAt(0).toUpperCase() + today.slice(1)}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={styles.topbarRight}>
             <div style={styles.tasaWidget} onClick={() => { setTasaInput(rate); setTasaModal(true) }}>
               <span>🇻🇪</span>
               <div>
@@ -151,15 +170,16 @@ export default function App() {
               </div>
               <span style={{ fontSize: 12, color: '#f97316', opacity: 0.6 }}>✏️</span>
             </div>
-            <div style={styles.monthChip}>Abril 2026</div>
+            <div style={styles.monthChip}>{monthLabel}</div>
           </div>
         </div>
 
         {/* PAGES */}
+        {page === 'dashboard' && <Dashboard {...sharedProps} />}
         {page === 'cuentas' && (
           <Cuentas accounts={accounts} addAccount={addAccount} updateAccount={updateAccount} deleteAccount={deleteAccount} rate={rate} />
         )}
-        {page !== 'cuentas' && (
+        {!['dashboard','cuentas'].includes(page) && (
           <div style={styles.placeholder}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>{navItems.find(n => n.id === page)?.icon}</div>
             <div>Sección <strong style={{ color: '#eef0f5' }}>{navItems.find(n => n.id === page)?.label}</strong> — próximamente</div>
@@ -180,7 +200,7 @@ export default function App() {
             </div>
             {tasaInput && (
               <div style={styles.preview}>
-                $100 USD = <strong style={{ color: '#f97316' }}>Bs. {Math.round(100 * tasaInput).toLocaleString('es-VE')}</strong> · $90 = <strong style={{ color: '#f97316' }}>Bs. {Math.round(90 * tasaInput).toLocaleString('es-VE')}</strong>
+                $100 = <strong style={{ color: '#f97316' }}>Bs. {Math.round(100 * tasaInput).toLocaleString('es-VE')}</strong> · $90 = <strong style={{ color: '#f97316' }}>Bs. {Math.round(90 * tasaInput).toLocaleString('es-VE')}</strong>
               </div>
             )}
             <button style={styles.btnPrimary} onClick={handleApplyTasa}>✓ Aplicar tasa</button>
